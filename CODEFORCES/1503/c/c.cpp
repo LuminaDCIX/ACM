@@ -2,7 +2,6 @@
 
 using namespace std;
 
-#define y1 _y1
 #define all(x) (x).begin(), (x).end()
 #define gid(x, id) (get<(id)>((x)))
 
