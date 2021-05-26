@@ -2,6 +2,53 @@
 
 using namespace std;
 
+std::string to_string(std::string s) { return '"' + s + '"'; }
+
+std::string to_string(const char* s) { return to_string((std::string)s); }
+
+std::string to_string(bool b) { return (b ? "true" : "false"); }
+
+template <typename A, typename B>
+std::string to_string(std::pair<A, B> p) {
+  return "(" + to_string(p.first) + ", " + to_string(p.second) + ")";
+}
+
+template <typename A>
+std::string to_string(A v) {
+  using ::to_string;
+  using std::to_string;
+  bool first = true;
+  std::string res = "{";
+  for (const auto& x : v) {
+    if (!first) {
+      res += ", ";
+    }
+    first = false;
+    res += to_string(x);
+  }
+  res += "}";
+  return res;
+}
+
+void debug_out() { std::cerr << std::endl; }
+
+template <typename Head, typename... Tail>
+void debug_out(Head H, Tail... T) {
+  using ::to_string;
+  using std::to_string;
+  std::cerr << " " << to_string(H);
+  debug_out(T...);
+}
+
+#ifdef LOCAL
+#define debug(...)                                    \
+  std::cerr << __FUNCTION__ << "(" << __LINE__ << ")" \
+            << "[" << #__VA_ARGS__ << "]:",           \
+      debug_out(__VA_ARGS__)
+#else
+#define debug(...) 42
+#endif
+
 const int N = 3e5 + 5;
 
 int dir[N];
@@ -10,68 +57,40 @@ map<int, int> id;
 int ans[N];
 
 void solve(int n, int m, vector<int> t) {
-
-  vector<int> in(n);
   n = t.size();
-  if (n == 1) {
-    return;
-  }
-  set<int> L;
-  set<int> R;
+  priority_queue<array<int, 2>> heap;
+  vector<array<int, 2>> v;
   for (int i = 0; i < n; ++i) {
-    if (dir[id[t[i]]] == 0) {
-      L.insert(t[i]);
-      R.insert(-t[i]);
-    } else {
-      R.insert(t[i]);
-      L.insert(2 * m - t[i]);
-    }
+    v.push_back({t[i], id[t[i]]});
   }
-  priority_queue<array<int, 3>> heap;
-  for (auto pos : R) {
-    auto itr = L.lower_bound(pos);
-    if (id[*itr] == id[pos]) {
-      ++itr;
-    }
-    if (itr != L.end()) {
-      in[id[pos]]++;
-      heap.push({-(*itr - pos), pos, *itr});
-    }
-  }
-  while (!heap.empty()) {
-    auto h = heap.top();
-    heap.pop();
-    int idl = id[h[1]];
-    int idr = id[h[2]];
-
-    // cerr << -h[0] << " " << h[1] << " " << h[2] << endl;
-    if (ans[idl] != -1 || ans[idr] != -1) {
-      if (ans[idl] == -1) {
-        int pos = h[1];
-        auto itr = L.lower_bound(pos);
-        if (itr != L.end()) {
-          if (id[*itr] == id[pos]) {
-            ++itr;
-          }
-          if (itr != L.end()) {
-            in[id[pos]]++;
-            heap.push({-(*itr - pos), pos, *itr});
-          }
-        }
+  sort(v.begin(), v.end());
+  for (int i = 0; i < n; ++i) {
+    if (dir[v[i][1]] == 0) {  // left
+      if (heap.empty()) {
+        heap.push({-v[i][0], id[v[i][0]]});
+      } else {
+        auto x = heap.top();
+        heap.pop();
+        ans[x[1]] = (v[i][0] - x[0]) / 2;
+        ans[v[i][1]] = (v[i][0] - x[0]) / 2;
+        debug(x[1], v[i][1]);
       }
-      continue;
+    } else {  // right
+      heap.push({v[i][0], v[i][1]});
     }
-    ans[idl] = -h[0] / 2;
-    ans[idr] = -h[0] / 2;
-    if (h[1] > 0) {
-      L.erase(L.find(2 * m - h[1]));
-    } else {
-      L.erase(L.find(-h[1]));
-    }
+  }
+  priority_queue<array<int, 2>> que;
+  while (!heap.empty()) {
+    que.push(heap.top());
+    heap.pop();
+  }
 
-    L.erase(L.find(h[2]));
-
-    // cerr << "hello" << endl;
+  while (que.size() > 1) {
+    auto r = que.top();
+    que.pop();
+    auto l = que.top();
+    que.pop();
+    ans[r[1]] = ans[l[1]] = (2 * m - r[0] - l[0]) / 2;
   }
 }
 
@@ -81,6 +100,7 @@ int main() {
   int t;
   cin >> t;
   while (t--) {
+    debug(t);
     int n;
     int m;
     cin >> n >> m;
@@ -95,10 +115,8 @@ int main() {
       cin >> s;
       if (s[0] == 'R') {
         dir[i] = 1;
-        id[2 * m - x[i]] = i;
       } else {
         dir[i] = 0;
-        id[-x[i]] = i;
       }
     }
 
